@@ -1,10 +1,23 @@
 <!DOCTYPE html>
 <html>
   <head>
-    <link rel="stylesheet" href="index.css" />
+    <link rel="stylesheet" href="style.css" />
     <title>Card Payments</title>
   </head>
   <body>
     <a href="/">Go back to home</a>
+    <h1>Card Payments</h1>
+
+    <h3>Cart</h3>
+
+    Name: Logitech G412 Mechanical Keyboard <br />
+    Quantity: 2 <br />
+    Price: $200 <br />
+    <br />
+
+    <button onclick="handleCheckout()">Checkout</button>
+    <form action="/create-checkout-session" method="POST">
+      <button type="submit" id="checkout-button">Checkout Form Button</button>
+    </form>
   </body>
 </html>

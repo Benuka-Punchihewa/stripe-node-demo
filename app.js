@@ -1,19 +1,52 @@
 require("dotenv").config();
 const express = require("express");
 const app = express();
+const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
 
 app.set("view engine", "ejs");
 app.use(express.static("public"));
 
+const port = process.env.PORT || 5000;
+
 app.get("/", (req, res) => {
   res.render("index");
+});
+
+app.get("/success", (req, res) => {
+  res.render("success");
+});
+
+app.get("/cancel", (req, res) => {
+  res.render("cancel");
 });
 
 app.get("/card-payments", (req, res) => {
   res.render("card-payments");
 });
 
-const port = process.env.PORT || 5000;
+app.post("/create-checkout-session", async (req, res) => {
+  const session = await stripe.checkout.sessions.create({
+    line_items: [
+      {
+        price_data: {
+          currency: "usd",
+          product_data: {
+            name: "Logitech G412 Mechanical Keyboard",
+          },
+          //unit price should be entered in pennies
+          unit_amount: 200000, //equivalent to $ 200
+        },
+        quantity: 2,
+      },
+    ],
+    mode: "payment",
+    success_url: `http://127.0.0.1:${port}/success`,
+    cancel_url: `http://127.0.0.1:${port}/cancel`,
+  });
+
+  res.redirect(303, session.url);
+});
+
 const start = async () => {
   try {
     app.listen(port, () =>
