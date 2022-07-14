@@ -36,6 +36,10 @@ app.get("/card-saving-custom", (req, res) => {
   });
 });
 
+app.get("/payment-saved-card", (req, res) => {
+  res.render("payment-saved-card");
+});
+
 // for prebuilt card payments
 app.post("/create-checkout-session", async (req, res) => {
   const session = await stripe.checkout.sessions.create({
@@ -89,6 +93,48 @@ app.post("/setup-intent", async (req, res) => {
   });
 });
 
+//create payment intent to make payments using an existing customer
+app.post("/create-payment-intent-saved-card", async (req, res) => {
+  try {
+    // retrieve payment methods
+    const paymentMethods = await stripe.paymentMethods.list({
+      customer: "cus_M3ZgLyaiC2CVFb",
+      type: "card",
+    });
+
+    const paymentIntent = await stripe.paymentIntents.create({
+      amount: 40000,
+      currency: "eur",
+      customer: "cus_M3ZgLyaiC2CVFb",
+      payment_method: paymentMethods.data[0].id,
+      off_session: true,
+      confirm: true,
+    });
+
+    console.log(paymentIntent);
+
+    res.send({
+      message: "success",
+    });
+  } catch (err) {
+    // Error code will be authentication_required if authentication is needed
+    console.log("Error code is: ", err.code);
+    const paymentIntentRetrieved = await stripe.paymentIntents.retrieve(
+      err.raw.payment_intent.id
+    );
+    console.log("PI retrieved: ", paymentIntentRetrieved.id);
+
+    //***********************************************
+    // If the payment failed due to an authentication_required decline code,
+    //  use the declined PaymentIntent’s client secret and payment method with
+    //  confirmCardPayment to allow the customer to authenticate the payment.
+
+    res.send({
+      message: "failed",
+    });
+  }
+});
+
 const createCustomer = async () => {
   const customer = await stripe.customers.create({
     name: "John Doe",
@@ -96,6 +142,15 @@ const createCustomer = async () => {
   });
   console.log(customer);
 };
+
+// const test = async () => {
+//   const paymentMethods = await stripe.paymentMethods.list({
+//     customer: "cus_M3ZgLyaiC2CVFb",
+//     type: "card",
+//   });
+//   console.log(paymentMethods);
+// };
+// test();
 
 const start = async () => {
   try {

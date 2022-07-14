@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <link rel="stylesheet" href="style.css" />
+    <title>Saved Card Payments</title>
+  </head>
+  <body>
+    <a href="/">Go back to home</a>
+    <h1>Saved Card Payments</h1>
+
+    <h3>Cart</h3>
+
+    Name: Logitech G412 Mechanical Keyboard <br />
+    Quantity: 2 <br />
+    Unit Price: $200 <br />
+    Total: $500 <br />
+    <br />
+
+    <form id="payment-form">
+      <button type="submit" id="checkout-button">
+        Make Payment Using Saved Card
+      </button>
+    </form>
+    <script>
+      document
+        .getElementById("payment-form")
+        .addEventListener("submit", handleSubmit);
+
+      async function handleSubmit(e) {
+        e.preventDefault();
+        const response = await fetch("/create-payment-intent-saved-card", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          //   body: JSON.stringify({ items }),
+        });
+        const { message } = await response.json();
+        alert(message);
+      }
+    </script>
+  </body>
+</html>
