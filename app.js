@@ -30,13 +30,19 @@ app.get("/card-payments-custom", (req, res) => {
   });
 });
 
+app.get("/card-saving-custom", (req, res) => {
+  res.render("card-saving-custom", {
+    stripePublishableKey: process.env.STRIPE_PUBLISHABLE_KEY,
+  });
+});
+
 // for prebuilt card payments
 app.post("/create-checkout-session", async (req, res) => {
   const session = await stripe.checkout.sessions.create({
     line_items: [
       {
         price_data: {
-          currency: "usd",
+          currency: "eur",
           product_data: {
             name: "Logitech G412 Mechanical Keyboard",
           },
@@ -69,6 +75,27 @@ app.post("/create-payment-intent", async (req, res) => {
     clientSecret: paymentIntent.client_secret,
   });
 });
+
+//setup intent for saving the card
+app.post("/setup-intent", async (req, res) => {
+  // Create a PaymentIntent with the order amount and currency
+  const intent = await await stripe.setupIntents.create({
+    customer: "cus_M3ZgLyaiC2CVFb",
+    payment_method_types: ["card"],
+  });
+
+  res.send({
+    clientSecret: intent.client_secret,
+  });
+});
+
+const createCustomer = async () => {
+  const customer = await stripe.customers.create({
+    name: "John Doe",
+    email: "johndoe@gmail.com",
+  });
+  console.log(customer);
+};
 
 const start = async () => {
   try {
