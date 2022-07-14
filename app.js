@@ -5,6 +5,7 @@ const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
 
 app.set("view engine", "ejs");
 app.use(express.static("public"));
+app.use(express.json());
 
 const port = process.env.PORT || 5000;
 
@@ -40,6 +41,12 @@ app.get("/payment-saved-card", (req, res) => {
   res.render("payment-saved-card");
 });
 
+app.get("/auth-and-caputre-custom-card-payments", (req, res) => {
+  res.render("auth-and-caputre-custom-card-payments", {
+    stripePublishableKey: process.env.STRIPE_PUBLISHABLE_KEY,
+  });
+});
+
 // for prebuilt card payments
 app.post("/create-checkout-session", async (req, res) => {
   const session = await stripe.checkout.sessions.create({
@@ -70,6 +77,7 @@ app.post("/create-payment-intent", async (req, res) => {
   const paymentIntent = await stripe.paymentIntents.create({
     amount: 40000, // this can be replaced with calculate order functions amount: calculateOrder()
     currency: "eur",
+    customer: "john-doe-01",
     automatic_payment_methods: {
       enabled: true,
     },
@@ -135,13 +143,50 @@ app.post("/create-payment-intent-saved-card", async (req, res) => {
   }
 });
 
+// make payments using auth and capture - custom payment flow
+app.post("/create-payment-intent-auth-and-capture", async (req, res) => {
+  // Create a PaymentIntent with the order amount and currency
+  const paymentIntent = await stripe.paymentIntents.create({
+    amount: 40000, // this can be replaced with calculate order functions amount: calculateOrder()
+    currency: "eur",
+    customer: "john-doe-01",
+    payment_method_types: ["card"],
+    capture_method: "manual",
+  });
+
+  res.send({
+    clientSecret: paymentIntent.client_secret,
+  });
+});
+
+// make payments using auth and capture - custom payment flow
+app.post("/capture-payment", async (req, res) => {
+  const paymentIntent = await stripe.paymentIntents.capture(req.body.intentId, {
+    // amount_to_capture: 30000, // only to capture less that the authorized amount
+  });
+
+  res.send({
+    clientSecret: paymentIntent.client_secret,
+  });
+});
+
+// cancel authorized payments
+app.post("/cancel-payment", async (req, res) => {
+  const paymentIntent = await stripe.paymentIntents.cancel(req.body.intentId);
+  res.send({
+    clientSecret: paymentIntent.client_secret,
+  });
+});
+
 const createCustomer = async () => {
   const customer = await stripe.customers.create({
+    id: "john-doe-01",
     name: "John Doe",
     email: "johndoe@gmail.com",
   });
   console.log(customer);
 };
+// createCustomer();
 
 // const test = async () => {
 //   const paymentMethods = await stripe.paymentMethods.list({

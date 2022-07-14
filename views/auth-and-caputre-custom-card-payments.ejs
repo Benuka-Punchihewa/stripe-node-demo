@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <link rel="stylesheet" href="style.css" />
+    <title>Prebuilt Card Payments</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <script src="https://js.stripe.com/v3/"></script>
+  </head>
+  <body>
+    <a href="/">Go back to home</a>
+    <h1>Card Payments Custom</h1>
+
+    <h3>Cart</h3>
+
+    Name: Logitech G412 Mechanical Keyboard <br />
+    Quantity: 2 <br />
+    Unit Price: $200 <br />
+    Total: $500 <br />
+    <br />
+    <!-- Display a payment form -->
+    <form id="payment-form">
+      <div id="payment-element">
+        <!--Stripe.js injects the Payment Element-->
+      </div>
+      <br />
+      <button id="submit">
+        <div class="spinner hidden" id="spinner"></div>
+        <span id="button-text">Pay now</span>
+      </button>
+      <div id="payment-message" class="hidden"></div>
+    </form>
+
+    <div id="capture-or-cancel">
+      <button onclick="handleCapturePayment()">Capture</button>
+      <button onclick="handleCancelPayment()">Cancel</button>
+    </div>
+
+    <h2 id="payment-successfull">Payment Successfull!</h2>
+    <h2 id="payment-cancelled">Payment Cancelled!</h2>
+  </body>
+
+  <script>
+    const publishableKey = "<%= stripePublishableKey %>";
+    const stripe = Stripe(publishableKey);
+
+    document
+      .getElementById("payment-form")
+      .addEventListener("submit", handleSubmit);
+
+    const submitBtn = document.getElementById("submit");
+    const captureOrCancel = document.getElementById("capture-or-cancel");
+    const paymentSuccesfulMsg = document.getElementById("payment-successfull");
+    const paymentCancelMsg = document.getElementById("payment-cancelled");
+
+    paymentSuccesfulMsg.style.display = "none";
+    paymentCancelMsg.style.display = "none";
+
+    // Fetches a payment intent and captures the client secret
+    const initialize = async () => {
+      const response = await fetch("/create-payment-intent-auth-and-capture", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        //   body: JSON.stringify({ items }),
+      });
+      const { clientSecret } = await response.json();
+
+      const appearance = {
+        theme: "stripe",
+      };
+      elements = stripe.elements({ appearance, clientSecret });
+
+      const paymentElement = elements.create("payment");
+      paymentElement.mount("#payment-element");
+    };
+
+    async function handleSubmit(e) {
+      e.preventDefault();
+      const { error } = await stripe.confirmPayment({
+        elements,
+        confirmParams: {
+          // Make sure to change this to your payment completion page
+          return_url:
+            "http://localhost:5000/auth-and-caputre-custom-card-payments",
+        },
+      });
+
+      // This point will only be reached if there is an immediate error when
+      // confirming the payment. Otherwise, your customer will be redirected to
+      // your `return_url`. For some payment methods like iDEAL, your customer will
+      // be redirected to an intermediate site first to authorize the payment, then
+      // redirected to the `return_url`.
+      if (error.type === "card_error" || error.type === "validation_error") {
+        alert(error.message);
+      } else {
+        alert("An unexpected error occurred.");
+      }
+    }
+
+    async function handleCapturePayment() {
+      const response = await fetch("/capture-payment", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          intentId: new URLSearchParams(window.location.search).get(
+            "payment_intent"
+          ),
+        }),
+      });
+      const { clientSecret } = await response.json();
+      checkStatus();
+    }
+
+    async function handleCancelPayment() {
+      const response = await fetch("/cancel-payment", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          intentId: new URLSearchParams(window.location.search).get(
+            "payment_intent"
+          ),
+        }),
+      });
+      const { clientSecret } = await response.json();
+      checkStatus();
+    }
+
+    // Fetches the payment intent status after payment submission
+    async function checkStatus() {
+      const clientSecret = new URLSearchParams(window.location.search).get(
+        "payment_intent_client_secret"
+      );
+
+      if (!clientSecret) {
+        captureOrCancel.style.display = "none";
+        initialize();
+        return;
+      }
+
+      submitBtn.style.display = "none";
+
+      const { paymentIntent } = await stripe.retrievePaymentIntent(
+        clientSecret
+      );
+
+      console.log(paymentIntent.status);
+
+      switch (paymentIntent.status) {
+        case "succeeded":
+          alert("Payment succeeded!");
+          paymentSuccesfulMsg.style.display = "block";
+          submitBtn.style.display = "none";
+          captureOrCancel.style.display = "none";
+          break;
+        case "requires_capture":
+          alert("Payment Authorized! Not Yet Captured");
+          break;
+        case "processing":
+          alert("Your payment is processing.");
+          break;
+        case "requires_payment_method":
+          alert("Your payment was not successful, please try again.");
+          break;
+        case "canceled":
+          alert("Payment Cancelled!");
+          paymentCancelMsg.style.display = "block";
+          submitBtn.style.display = "none";
+          captureOrCancel.style.display = "none";
+          break;
+          break;
+        default:
+          alert("Something went wrong.");
+          break;
+      }
+    }
+
+    checkStatus();
+  </script>
+</html>
