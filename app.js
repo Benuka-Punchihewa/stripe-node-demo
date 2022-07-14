@@ -20,10 +20,17 @@ app.get("/cancel", (req, res) => {
   res.render("cancel");
 });
 
-app.get("/card-payments", (req, res) => {
-  res.render("card-payments");
+app.get("/card-payments-prebuilt", (req, res) => {
+  res.render("card-payments-prebuilt");
 });
 
+app.get("/card-payments-custom", (req, res) => {
+  res.render("card-payments-custom", {
+    stripePublishableKey: process.env.STRIPE_PUBLISHABLE_KEY,
+  });
+});
+
+// for prebuilt card payments
 app.post("/create-checkout-session", async (req, res) => {
   const session = await stripe.checkout.sessions.create({
     line_items: [
@@ -34,7 +41,7 @@ app.post("/create-checkout-session", async (req, res) => {
             name: "Logitech G412 Mechanical Keyboard",
           },
           //unit price should be entered in pennies
-          unit_amount: 200000, //equivalent to $ 200
+          unit_amount: 20000, //equivalent to $ 200
         },
         quantity: 2,
       },
@@ -45,6 +52,22 @@ app.post("/create-checkout-session", async (req, res) => {
   });
 
   res.redirect(303, session.url);
+});
+
+// for custom card payments
+app.post("/create-payment-intent", async (req, res) => {
+  // Create a PaymentIntent with the order amount and currency
+  const paymentIntent = await stripe.paymentIntents.create({
+    amount: 40000, // this can be replaced with calculate order functions amount: calculateOrder()
+    currency: "eur",
+    automatic_payment_methods: {
+      enabled: true,
+    },
+  });
+
+  res.send({
+    clientSecret: paymentIntent.client_secret,
+  });
 });
 
 const start = async () => {

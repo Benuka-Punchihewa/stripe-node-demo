@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <link rel="stylesheet" href="style.css" />
+    <title>Prebuilt Card Payments</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <script src="https://js.stripe.com/v3/"></script>
+  </head>
+  <body>
+    <a href="/">Go back to home</a>
+    <h1>Card Payments Custom</h1>
+
+    <h3>Cart</h3>
+
+    Name: Logitech G412 Mechanical Keyboard <br />
+    Quantity: 2 <br />
+    Unit Price: $200 <br />
+    Total: $500 <br />
+    <br />
+    <!-- Display a payment form -->
+    <form id="payment-form">
+      <div id="payment-element">
+        <!--Stripe.js injects the Payment Element-->
+      </div>
+      <br />
+      <button id="submit">
+        <div class="spinner hidden" id="spinner"></div>
+        <span id="button-text">Pay now</span>
+      </button>
+      <div id="payment-message" class="hidden"></div>
+    </form>
+  </body>
+
+  <script>
+    const publishableKey = "<%= stripePublishableKey %>";
+    const stripe = Stripe(publishableKey);
+
+    document
+      .getElementById("payment-form")
+      .addEventListener("submit", handleSubmit);
+
+    // Fetches a payment intent and captures the client secret
+    const initialize = async () => {
+      const response = await fetch("/create-payment-intent", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        //   body: JSON.stringify({ items }),
+      });
+      const { clientSecret } = await response.json();
+
+      const appearance = {
+        theme: "stripe",
+      };
+      elements = stripe.elements({ appearance, clientSecret });
+
+      const paymentElement = elements.create("payment");
+      paymentElement.mount("#payment-element");
+    };
+
+    async function handleSubmit(e) {
+      e.preventDefault();
+      const { error } = await stripe.confirmPayment({
+        elements,
+        confirmParams: {
+          // Make sure to change this to your payment completion page
+          return_url: "http://localhost:5000/card-payments-custom",
+        },
+      });
+
+      // This point will only be reached if there is an immediate error when
+      // confirming the payment. Otherwise, your customer will be redirected to
+      // your `return_url`. For some payment methods like iDEAL, your customer will
+      // be redirected to an intermediate site first to authorize the payment, then
+      // redirected to the `return_url`.
+      if (error.type === "card_error" || error.type === "validation_error") {
+        alert(error.message);
+      } else {
+        alert("An unexpected error occurred.");
+      }
+    }
+
+    // Fetches the payment intent status after payment submission
+    async function checkStatus() {
+      const clientSecret = new URLSearchParams(window.location.search).get(
+        "payment_intent_client_secret"
+      );
+
+      if (!clientSecret) {
+        return;
+      }
+
+      const { paymentIntent } = await stripe.retrievePaymentIntent(
+        clientSecret
+      );
+
+      switch (paymentIntent.status) {
+        case "succeeded":
+          alert("Payment succeeded!");
+          break;
+        case "processing":
+          alert("Your payment is processing.");
+          break;
+        case "requires_payment_method":
+          alert("Your payment was not successful, please try again.");
+          break;
+        default:
+          alert("Something went wrong.");
+          break;
+      }
+    }
+
+    initialize();
+    checkStatus();
+  </script>
+</html>
