@@ -188,14 +188,12 @@ const createCustomer = async () => {
 };
 // createCustomer();
 
-// const test = async () => {
-//   const paymentMethods = await stripe.paymentMethods.list({
-//     customer: "cus_M3ZgLyaiC2CVFb",
-//     type: "card",
-//   });
-//   console.log(paymentMethods);
-// };
-// test();
+//confrim payment from server side
+const confirmPayment = async (intentId) => {
+  const paymentIntent = await stripe.paymentIntents.retrieve(intentId);
+  console.log(paymentIntent.status);
+};
+confirmPayment("pi_3LLW5PGJagRSuZvG1IPLMMRn");
 
 const start = async () => {
   try {
